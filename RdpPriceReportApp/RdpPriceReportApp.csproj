@@ -2,7 +2,7 @@
 
   <PropertyGroup>
 	<DisableImplicitComponentsAnalyzers>true</DisableImplicitComponentsAnalyzers>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <UserSecretsId>4d4a8731-5558-4a48-aae3-59dd30874f2d</UserSecretsId>
     <DockerDefaultTargetOS>Windows</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>
@@ -23,9 +23,9 @@
 
   <ItemGroup>
     <PackageReference Include="CsvHelper" Version="15.0.8" />
+    <PackageReference Include="LSEG.Data.Content" Version="2.1.0" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.10.9" />
     <PackageReference Include="Radzen.Blazor" Version="2.15.19" />
-    <PackageReference Include="Refinitiv.DataPlatform" Version="1.0.0-alpha3" />
   </ItemGroup>
 
   <ItemGroup>
