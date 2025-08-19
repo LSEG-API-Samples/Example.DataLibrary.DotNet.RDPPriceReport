@@ -14,10 +14,12 @@ using ChainExpanderLib.Models.Message;
 using ChainExpanderLib.Utils;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Refinitiv.DataPlatform.Content;
-using Refinitiv.DataPlatform.Core;
-using Refinitiv.DataPlatform.Delivery;
-using Refinitiv.DataPlatform.Delivery.Stream;
+using LSEG.Data.Content;
+using LSEG.Data.Core;
+using LSEG.Data.Delivery;
+using LSEG.Data.Delivery.Stream;
+using System.IO;
+
 
 
 namespace ChainExpanderLib
@@ -62,25 +64,24 @@ namespace ChainExpanderLib
                     "LONGLINK14", "LONGNEXTLR", "LONGPREVLR", "BR_LINK1", "BR_LINK5", "BR_LINK14", "BR_NEXTLR",
                     "BR_PREVLR"
                 };
-                
-                var itemParams = new ItemStream.Params().Session(_session)
-                    .WithStreaming(false)
-                    .WithFields(chainTestFileds)
-                    .OnRefresh((s, msg) =>
-                    {
-                        var message = msg.ToObject<MarketPriceRefreshMessage>();
-                        if (message?.Fields != null)
-                        {
-                            var templateEnum = ChainUtils.GetChainTemplate(message.Fields);
-                            if (templateEnum != ChainTemplateEnum.None)
-                                isChainRic = true;
-                        }
-                        isComlete = true;
-                    })
-                    .OnStatus((s, msg) => { isComlete = true; });
 
-                IStream stream = DeliveryFactory.CreateStream(itemParams.Name(chainRic));
-                // Open the stream asynchronously and keep track of the task
+                var stream = OMMStream.Definition(chainRic).Fields(chainTestFileds).GetStream().Streaming(false)
+                                .OnRefresh((item, msg, s) =>
+                                {
+                                    var message = msg.ToObject<MarketPriceRefreshMessage>();
+                                    if (message?.Fields != null)
+                                    {
+                                        var templateEnum = ChainUtils.GetChainTemplate(message.Fields);
+                                        if (templateEnum != ChainTemplateEnum.None)
+                                            isChainRic = true;
+                                    }
+                                    isComlete = true;
+
+                                })
+                                .OnStatus((item, msg, s) => 
+                                {
+                                    isComlete = true;                                });
+
                 stream.OpenAsync();
              
             }).ConfigureAwait(true);
@@ -90,12 +91,11 @@ namespace ChainExpanderLib
         private async void OpenSnapshot(string ricName)
         {
 
-            var itemParams = new ItemStream.Params().Session(_session)
-                    .OnRefresh(ProcessRefresh)
-                    .WithStreaming(false)
-                    .OnStatus(ProcessStatus);
+            var stream = OMMStream.Definition(ricName).GetStream()
+                            .Streaming(false)
+                            .OnRefresh(ProcessRefresh)
+                            .OnStatus(ProcessStatus);
 
-                var stream = DeliveryFactory.CreateStream(itemParams.Name(ricName));
                 if (_streamCache.TryAdd(ricName, stream))
                 {
                     await stream.OpenAsync().ConfigureAwait(false);
@@ -112,20 +112,19 @@ namespace ChainExpanderLib
                     OpenSnapshot(ric);
                 }
             }).ConfigureAwait(false);
-
         }
        
-        void ProcessRefresh(IStream stream, JObject refreshMsg)
+        void ProcessRefresh(String item, JObject refreshMsg,  IStream stream)
         {
             ProcessChainResponseMessage(refreshMsg, MessageTypeEnum.Refresh);
         }
 
-        void ProcessUpdate(IStream stream, JObject updateMsg)
+        void ProcessUpdate(String item, JObject updateMsg, IStream stream)
         {
             
             throw new NotImplementedException();
         }
-        void ProcessStatus(IStream stream, JObject statusMsg)
+        void ProcessStatus(String item, JObject statusMsg, IStream stream)
         {
             ProcessChainResponseMessage(statusMsg, MessageTypeEnum.Status);
         }
