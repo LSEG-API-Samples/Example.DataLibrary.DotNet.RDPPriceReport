@@ -1,6 +1,6 @@
 ﻿@page "/login"
 @using RdpRealTimePricing.Model
-@using Refinitiv.DataPlatform.Core
+@using LSEG.Data.Core
 @using System.Text.Json
 @using RdpPriceReportApp.ViewModel
 @using RdpRealTimePricing.Events
@@ -22,8 +22,8 @@
                     <div class="col-md-10 col-sm-10 p-3">
                         <RadzenRadioButtonList @bind-Value="LoginRdpVisible" TValue="bool" Orientation="Orientation.Horizontal" Change="@((args) => Change(args, "LoginOptionBtn"))">
                             <Items>
-                                <RadzenRadioButtonListItem Text="RDP" Value="true" />
-                                <RadzenRadioButtonListItem Text="Deployed TREP" Value="false" />
+                                <RadzenRadioButtonListItem Text="Data Platform" Value="true" />
+                                <RadzenRadioButtonListItem Text="Deployed RTDS" Value="false" />
                             </Items>
                         </RadzenRadioButtonList>
                     </div>
@@ -38,31 +38,33 @@
                                 <RadzenCard Visible="@LoginRdpVisible">
                                     <div class="row" style="margin-bottom: 48px">
                                         <div class="col-md-3 align-right">
-                                            <RadzenLabel Text="Username"/>
+                                            <RadzenLabel Text="Client ID"/>
                                         </div>
                                         <div class="col-md-9">
-                                            <RadzenTextBox style="display: block;" Name="UsernameTxt" @bind-Value="RdpSession.RdpUser"/>
-                                            <RadzenRequiredValidator Component="UsernameTxt" Text="Username is required" Popup="true" Style="position: absolute"/>
-                                        </div>
+                                        <RadzenTextBox style="display: block;" Name="UsernameTxt" @bind-Value="RdpSession.DPClientID" />
+                                        <RadzenRequiredValidator Component="UsernameTxt" Text="ClientID is required" Popup="true" Style="position: absolute" />
+
+                                    </div>
                                     </div>
                                     <div class="row" style="margin-bottom: 48px">
                                         <div class="col-md-3">
-                                            <RadzenLabel Text="Password"/>
+                                            <RadzenLabel Text="Client Secret"/>
                                         </div>
                                         <div class="col-md-9">
-                                            <RadzenPassword style="display: block" Name="PasswordTxt" @bind-Value="RdpSession.RdpPassword"/>
-                                            <RadzenRequiredValidator Component="PasswordTxt" Text="Password is required" Popup="true" Style="position: absolute"/>
-                                        </div>
+                                        <RadzenTextBox style="display: block" Name="PasswordTxt" @bind-Value="RdpSession.DPClientSecret" />
+                                        <RadzenRequiredValidator Component="PasswordTxt" Text="Client Secret is required" Popup="true" Style="position: absolute" />
+
                                     </div>
-                                    <div class="row" style="margin-bottom: 48px">
+                                    </div>
+                                   @*  <div class="row" style="margin-bottom: 48px">
                                         <div class="col-md-3">
                                             <RadzenLabel Text="AppKey"/>
                                         </div>
                                         <div class="col-md-9">
-                                            <RadzenTextBox style="display: block" Name="AppKeyTxt" @bind-Value="RdpSession.RdpAppKey"/>
+                                            <RadzenTextBox style="display: block" Name="AppKeyTxt" @bind-Value="RdpSession.DpAppKey"/>
                                             <RadzenRequiredValidator Component="AppKeyTxt" Text="AppKey is required" Popup="true" Style="position: absolute"/>
                                         </div>
-                                    </div>
+                                    </div> *@
                                 </RadzenCard>
                                 <RadzenCard>
                                     <RadzenButton ButtonType="ButtonType.Submit" Text="Login" Icon="account_circle" Style="margin-bottom: 20px; width: 150px; background-color: steelblue"/>
@@ -94,7 +96,7 @@
                                             <RadzenLabel Text="DACS User"/>
                                         </div>
                                         <div class="col-md-9">
-                                            <RadzenTextBox style="display: block;" Name="TrepUserTxt" @bind-Value="RdpSession.TrepUsername"/>
+                                            <RadzenTextBox style="display: block;" Name="TrepUserTxt" @bind-Value="RdpSession.RtdsUsername"/>
                                             <RadzenRequiredValidator Component="TrepUserTxt" Text="DACS User is required" Popup="true" Style="position: absolute"/>
                                         </div>
                                     </div>
@@ -103,7 +105,7 @@
                                             <RadzenLabel Text="Application ID"/>
                                         </div>
                                         <div class="col-md-9">
-                                            <RadzenTextBox style="display: block" Name="AppIdTxt" Placeholder="Optional. 256 is default." @bind-Value="RdpSession.TrepAppid"/>
+                                            <RadzenTextBox style="display: block" Name="AppIdTxt" Placeholder="Optional. 256 is default." @bind-Value="RdpSession.RtdsAppid"/>
                                         </div>
                                     </div>
                                     <div class="row" style="margin-bottom: 48px">
@@ -111,7 +113,7 @@
                                             <RadzenLabel Text="DACS Position"/>
                                         </div>
                                         <div class="col-md-9">
-                                            <RadzenTextBox style="display: block" Name="DACSPositionTxt" @bind-Value="RdpSession.TrepPosition"/>
+                                            <RadzenTextBox style="display: block" Name="DACSPositionTxt" @bind-Value="RdpSession.RtdsPosition"/>
                                         </div>
                                     </div>
                                 </RadzenCard>
@@ -234,7 +236,7 @@
                             {
                                 RdpSession.IsLoggedIn = true;
                                 AppData.UseRDP = LoginRdpVisible;
-                                AppData.CurrentUserName = AppData.UseRDP ? RdpSession.RdpUser : RdpSession.TrepUsername;
+                                AppData.CurrentUserName = AppData.UseRDP ? RdpSession.DPClientID : RdpSession.RtdsUsername;
                             }
 
                             var msg = new NotificationMessage()
