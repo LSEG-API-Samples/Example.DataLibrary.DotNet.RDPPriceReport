@@ -2,30 +2,29 @@
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using RdpRealTimePricing.Events;
-using Refinitiv.DataPlatform;
-using Refinitiv.DataPlatform.Core;
+using LSEG.Data;
+using LSEG.Data.Core;
+
 
 namespace RdpPriceReportApp.ViewModel
 {
     public class RdpSession
     {
 
-        #region TREPCredential
-        public  string TrepUsername = "";
-        public string TrepAppid = "256";
-        public string TrepPosition = "localhost/net";
+        #region RtdsCredential
+        public string RtdsUsername = "";
+        public string RtdsAppid = "256";
+        public string RtdsPosition = "localhost/net";
         public string WebSocketHost = "";
         #endregion
 
-        #region RDPUserCredential
-        public string RdpUser = "";
-        public string RdpPassword = "";
-        public string RdpAppKey = "";
-        //214d5f8636494afb9142b6e05188cbc5dd03c18f
+        #region DPUserCredential
+        public string DPClientID = "";
+        public string DPClientSecret = "";
         #endregion
 
         private ISession _session;
-        internal ISession ServiceSession => _session ?? throw new Exception("Please call InitWebSocketConnectionAsync to initialize RdpSession ");
+        internal ISession ServiceSession => _session ?? throw new Exception("Please call InitWebSocketConnectionAsync to initialize Data Platform Session ");
         //IStream stream;
         public Session.State SessionState { get; internal set; }
         public bool IsLoggedIn { get; set; }
@@ -54,34 +53,32 @@ namespace RdpPriceReportApp.ViewModel
 
                 if (!useRdp)
                 {
-                    _session = CoreFactory.CreateSession(new DeployedPlatformSession.Params()
-                        .Host(WebSocketHost)
-                        .WithDacsUserName(TrepUsername)
-                        .WithDacsApplicationID(TrepAppid)
-                        .WithDacsPosition(TrepPosition)
-                        .OnState(ProcessOnState)
-                        .OnEvent(ProcessOnEvent));
+                    _session = PlatformSession.Definition()
+                       .Host(WebSocketHost)
+                       .DacsUserName(RtdsUsername)
+                       .DacsApplicationID(RtdsAppid)
+                       .DacsPosition(RtdsPosition)
+                       .GetSession()
+                       .OnState(ProcessOnState)
+                       .OnEvent(ProcessOnEvent);
                 }
                 else
                 {
-                    System.Console.WriteLine("Start RDP PlatformSession");
-                    _session = CoreFactory.CreateSession(new PlatformSession.Params()
-                        .WithOAuthGrantType(new GrantPassword().UserName(RdpUser)
-                            .Password(RdpPassword))
-                        .AppKey(RdpAppKey)
-                        .WithTakeSignonControl(true)
-                        .OnState(ProcessOnState)
-                        .OnEvent(ProcessOnEvent));
+                    System.Console.WriteLine("Start PlatformSession");
+
+                    _session = PlatformSession.Definition().OAuthGrantType(
+                        new ClientCredentials().ClientID(DPClientID).ClientSecret(DPClientSecret))
+                        .GetSession().OnEvent(ProcessOnEvent).OnState(ProcessOnState);
                 }
                 _session.OpenAsync().ConfigureAwait(false);
 
             });
         }
-        private void ProcessOnEvent(ISession session, Session.EventCode code, JObject message)
+        private void ProcessOnEvent(Session.EventCode code, JObject message, ISession session)
         {
             RaiseSessionEvent(code, message);
         }
-        private void ProcessOnState(ISession session, Session.State state, string message)
+        private void ProcessOnState(Session.State state, string message, ISession session)
         {
             SessionState = state;
             RaiseStateChanged(state, message);

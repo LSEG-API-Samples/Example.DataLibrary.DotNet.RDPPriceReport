@@ -9,9 +9,11 @@ using Newtonsoft.Json.Linq;
 using RdpRealTimePricing.Events;
 using RdpRealTimePricing.Model.Enum;
 using RdpRealTimePricing.Model.MarketData;
-using Refinitiv.DataPlatform.Content;
-using Refinitiv.DataPlatform.Delivery;
-using Refinitiv.DataPlatform.Delivery.Stream;
+using LSEG.Data.Content;
+using LSEG.Data.Delivery;
+using LSEG.Data.Delivery.Stream;
+using LSEG.Data.Content.Pricing;
+
 
 namespace RdpPriceReportApp.ViewModel
 {
@@ -19,20 +21,23 @@ namespace RdpPriceReportApp.ViewModel
     {
         private readonly ConcurrentDictionary<string, IStream> _streamCache;
 
-        public async Task<List<string>> GetFiledList(string item, Refinitiv.DataPlatform.Core.ISession RdpSession)
+        public async Task<List<string>> GetFiledList(string item, LSEG.Data.Core.ISession RdpSession)
         {
             var fields = new List<string>();
             bool isComplete = false;
             if (RdpSession != null)
                 await Task.Run(() =>
                 {
-                    using (var stream = Pricing.CreateStreamingPrices(new StreamingPrices.Params().WithStreaming(false).Universe(item)
-                        .OnStatus((o, item, status) => { isComplete = true; })))
+                   
+                   
+                    //using (var stream = Pricing.CreateStreamingPrices(new StreamingPrices.Params().WithStreaming(false).Universe(item)
+                    //    .OnStatus((o, item, status) => { isComplete = true; })))
+                    using (var stream = Pricing.Definition(item).GetStream().Streaming(false).OnStatus((item, o, statusCb) => { isComplete = true; }))
                     {
                         if (stream.Open() == Stream.State.Opened)
                         {
                             // Retrieve a snapshot of the whole cache.  The interface also supports the ability to pull out specific items and fields.
-                            var snapshot = stream.GetSnapshotData().FirstOrDefault();
+                            var snapshot = stream.GetCacheSnapshot().FirstOrDefault();
                             if (snapshot.Key == item)
                             {
                                 var fieldList = ((IPriceData) snapshot.Value).Fields();
@@ -53,26 +58,30 @@ namespace RdpPriceReportApp.ViewModel
             return fields;
             
         }
-        public async Task OpenItemAsync(string item, Refinitiv.DataPlatform.Core.ISession RdpSession, IEnumerable<string> fieldNameList=null,
+        public async Task OpenItemAsync(string item, LSEG.Data.Core.ISession RdpSession, IEnumerable<string> fieldNameList=null,
             bool streamRequest = false)
         {
             if (RdpSession != null)
                 await Task.Run(() =>
                 {
-                    var itemParams = new ItemStream.Params().Session(RdpSession)
-                        .WithStreaming(streamRequest)
-                        .OnRefresh(processOnRefresh)
-                        .OnUpdate(processOnUpdate)
-                        .OnStatus(processOnStatus);
+                    //var itemParams = new ItemStream.Params().Session(RdpSession)
+                    //    .WithStreaming(streamRequest)
+                    //    .OnRefresh(processOnRefresh)
+                    //    .OnUpdate(processOnUpdate)
+                    //    .OnStatus(processOnStatus);
+                    var streamDef = OMMStream.Definition(item);
+
                     var nameList = (fieldNameList ?? Array.Empty<string>()).ToList();
                     if (nameList.Any())
                     {
                         // First, prepare our item stream details including the fields of interest and where to capture events...
-                        itemParams.WithFields(nameList);
+                        streamDef.Fields(nameList);
                     }
-                    
 
-                    var stream = DeliveryFactory.CreateStream(itemParams.Name(item));
+
+                    var stream = streamDef.GetStream().OnRefresh(processOnRefresh)
+                               .OnUpdate(processOnUpdate)
+                               .OnStatus(processOnStatus);
                     if (_streamCache.TryAdd(item, stream))
                     {
                         stream.OpenAsync();
@@ -87,7 +96,7 @@ namespace RdpPriceReportApp.ViewModel
                 throw new ArgumentNullException("RDP Session is null.");
         }
 
-        public async Task OpenItemAsync(string item, Refinitiv.DataPlatform.Core.ISession RdpSession,Type modelType,bool streamRequest=false)
+        public async Task OpenItemAsync(string item, LSEG.Data.Core.ISession RdpSession,Type modelType,bool streamRequest=false)
         {
            var fieldNameList = modelType.GetProperties()
                     .SelectMany(p => p.GetCustomAttributes(typeof(JsonPropertyAttribute))
@@ -97,7 +106,7 @@ namespace RdpPriceReportApp.ViewModel
            await OpenItemAsync(item, RdpSession, fieldNameList, streamRequest);
 
         }
-        public async Task OpenItemAsync(string item, Refinitiv.DataPlatform.Core.ISession RdpSession, bool streamRequest = false)
+        public async Task OpenItemAsync(string item, LSEG.Data.Core.ISession RdpSession, bool streamRequest = false)
         {
             await OpenItemAsync(item, RdpSession, new List<string>(), streamRequest);
 
@@ -125,18 +134,18 @@ namespace RdpPriceReportApp.ViewModel
 
      
         #region ItemEventProcessing
-        private void processOnRefresh(IStream s, JObject msg)
-       {
+        private void processOnRefresh(string item, JObject msg, IStream s)
+        {
            var refreshMsg = msg.ToObject<MarketPriceRefreshMessage>();
            RaiseOnMessage(MessageTypeEnum.Refresh, refreshMsg);
        }
-       private void processOnUpdate(IStream s, JObject msg)
-       {
+       private void processOnUpdate(string item, JObject msg, IStream s)
+        {
            var updateMsg = msg.ToObject<MarketPriceUpdateMessage>();
            RaiseOnMessage(MessageTypeEnum.Update, updateMsg);
        }
-       private void processOnStatus(IStream s, JObject msg)
-       {
+       private void processOnStatus(string item, JObject msg, IStream s)
+        {
            var statusMsg = msg.ToObject<StatusMessage>();
            var itemName = statusMsg.Key.Name.FirstOrDefault();
            if (statusMsg.State.Stream == StreamStateEnum.Closed ||

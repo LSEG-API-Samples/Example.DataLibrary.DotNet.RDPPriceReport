@@ -5,8 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using RdpRealTimePricing.Model.Data;
-using Refinitiv.DataPlatform.Core;
-using Refinitiv.DataPlatform.Delivery.Request;
+using LSEG.Data.Core;
+using LSEG.Data.Delivery.Request;
 
 namespace RdpPriceReportApp.ViewModel
 {
@@ -19,7 +19,7 @@ namespace RdpPriceReportApp.ViewModel
             endpoint.Append(ricname);
             endpoint.Append($"?interval=P1D&count={count}&fields=MID_PRICE,TRDPRC_1,TRNOVR_UNS");
 
-            var response = await Endpoint.SendRequestAsync(session, endpoint.ToString()).ConfigureAwait(true);
+            var response = await EndpointRequest.Definition(endpoint.ToString()).GetDataAsync().ConfigureAwait(true);
             if (!response.IsSuccess) return new DataTable();
             if (response.Data.Raw == null) return new DataTable();
             var headers = response.Data?.Raw[0]?["headers"];
