@@ -1,5 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
-using Refinitiv.DataPlatform.Core;
+using LSEG.Data.Core;
 
 namespace RdpRealTimePricing.Events
 {
